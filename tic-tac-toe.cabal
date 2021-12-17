@@ -26,6 +26,7 @@ source-repository head
 library
   exposed-modules:
       Lib
+      Printers
   other-modules:
       Paths_tic_tac_toe
   hs-source-dirs:
