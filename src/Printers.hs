@@ -1,37 +1,26 @@
 module Printers
-    ( printCellEntry
-    , printBoardWithHeaders
-    , translateUserEntryToBoard
+    ( printStandardBoard
+    , convertBoardToString
     ) where
 
+import Data.List
 import Lib
 
-translateBoardEntryToDisplay :: Int -> Int
-translateBoardEntryToDisplay x = x + 1
+header = "123"
 
-translateUserEntryToBoard :: Int -> Int
-translateUserEntryToBoard x = x - 1
+convertEntriesToString :: [Maybe Entry] -> String
+convertEntriesToString = foldl' (\acc maybeEntry -> acc ++ getStringFromEntry maybeEntry) ""
 
-convertRowToStringWithHeader :: Row -> String
-convertRowToStringWithHeader cells =
-      let (_, (rowNumber, _)) = cells !! 0
-          rowString = map (\(entry, coords) -> entry) cells
-          adjustedRowNumber = translateBoardEntryToDisplay rowNumber
-      in show adjustedRowNumber ++ " " ++  rowString
+convertFormatRowToEntryRow :: Board -> [(Row, Column)] -> [Maybe Entry]
+convertFormatRowToEntryRow board  = map (getEntry board)
 
-convertBoardToStringWithHeaders :: Board -> String
-convertBoardToStringWithHeaders board  =
-      let rows = map convertRowToStringWithHeader board
-          headerRow = "  123"
-          allRows = headerRow : rows
-      in  unlines allRows
+convertBoardToString :: Board -> BoardFormat -> String 
+convertBoardToString board formatRows = 
+    let entryRows = map (convertFormatRowToEntryRow board) formatRows
+        stringRows = map convertEntriesToString entryRows
+        headerRow = "\n  " ++ header ++ "\n"
+        rowsWithColHeaders = zipWith (\char string -> char : ' ' : string) header stringRows
+    in  headerRow ++ unlines rowsWithColHeaders
 
-printBoardWithHeaders :: Board -> IO ()
-printBoardWithHeaders board = putStr $ convertBoardToStringWithHeaders board
-
-
-printCellEntry :: Board -> Coord -> IO ()
-printCellEntry board (x,y) =
-  let (entry, _) = getCell board (x,y)
-      printout = "Entry at (" ++ (show (translateBoardEntryToDisplay x)) ++ "," ++ (show (translateBoardEntryToDisplay y)) ++ ") is " ++ show entry
-  in putStrLn printout
+printStandardBoard :: Board -> IO ()
+printStandardBoard board = putStrLn $ convertBoardToString board ticTacToeBoardFormat

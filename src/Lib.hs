@@ -1,74 +1,120 @@
 module Lib
-    ( getCell
-    , getNextEntry
-    , updateCellInBoard
+    ( getNextEntry
+    , getEntry
     , boardHasWinner
+    , boardIsFull
+    , createBlankBoard
+    , ticTacToeBoardFormat
+    , getStringFromEntry
+    , getEntryFromString
+    , getRowFromChar
+    , getColFromChar
+    , updateCell
     , Board
-    , Row
+    , BoardFormat
+    , Row (..)
+    , Column (..)
     , Cell
     , Coord
-    , Entry
+    , Entry (..)
     ) where
 
 import Data.List
+import Data.Maybe
+import qualified Data.Map as M
 
-type Entry = Char
-type Coord = (Int, Int)
-type Cell = (Entry, Coord)
-type Row = [Cell]
-type Board = [Row]
+data Entry = X | O deriving (Eq, Show)
+data Row = Row1 | Row2 | Row3 deriving (Eq, Ord, Show)
+data Column = Col1 | Col2 | Col3 deriving (Eq, Ord, Show)
 
-getCell :: Board -> Coord -> Cell
-getCell board (x,y) = board !! x !! y
+type Coord = (Row, Column)
+type Cell = (Coord, Maybe Entry) -- is this needed?
+type Board = M.Map Coord (Maybe Entry)
+type BoardFormat = [[Coord]]
 
-getCells :: Board -> [Coord] -> Row
-getCells board coords = map (\coord -> getCell board coord) coords
+getEntry :: Board -> Coord -> Maybe Entry
+getEntry board coord = M.findWithDefault Nothing coord board
 
-getCoord :: Cell -> Coord
-getCoord (_, coord) = coord
+getStringFromEntry :: Maybe Entry -> String
+getStringFromEntry    Nothing    = "_"
+getStringFromEntry    (Just a)   = show a
 
-getEntry :: Cell -> Entry
-getEntry (entry, _) = entry
+getEntryFromString :: String -> Maybe Entry
+getEntryFromString "X"  = Just X
+getEntryFromString "O"  = Just O
+getEntryFromString  _   = Nothing
 
-cellIsEmpty :: Cell -> Bool
-cellIsEmpty (entry, _) = entry == '_'
+getRowFromChar :: Char -> Maybe Row
+getRowFromChar '1'  = Just Row1
+getRowFromChar '2'  = Just Row2
+getRowFromChar '3'  = Just Row3
+getRowFromChar  _   = Nothing
 
-isSameCell :: Cell -> Cell -> Bool
-isSameCell (_, (x,y)) (_, (x',y')) = (x == x') && (y == y')
+getColFromChar :: Char -> Maybe Column
+getColFromChar '1'  = Just Col1
+getColFromChar '2'  = Just Col2
+getColFromChar '3'  = Just Col3
+getColFromChar  _   = Nothing
+
+updateCell :: Board -> Coord -> Entry -> (Bool, Board)
+updateCell board coord entry =
+    let existingEntry = getEntry board coord
+        entryIsEmpty = isNothing existingEntry
+        newBoard = if entryIsEmpty then  M.adjust (const (Just entry)) coord board else board
+    in (entryIsEmpty, newBoard)
 
 getNextEntry :: Entry -> Entry
-getNextEntry entry = if entry == 'X' then 'O' else 'X'
+getNextEntry entry = if entry == X then O else X
 
-rowHasWinner :: Row -> Entry -> Bool
-rowHasWinner cells entry = all (\cell -> entry == (getEntry cell)) cells
+getCoordsForRow :: Board -> Row -> [Coord]
+getCoordsForRow board row = M.keys $ M.filterWithKey (\(r, _) _ -> r == row) board
+
+getCoordsForCol :: Board -> Column -> [Coord]
+getCoordsForCol board col = M.keys $ M.filterWithKey (\(_, c) _ -> c == col) board
+
+getEntries :: Board -> [Coord] -> [Maybe Entry]
+getEntries board coords = M.elems $ M.filterWithKey (\boardCoord _ -> boardCoord `elem` coords) board
+
+hasWinner :: Eq a => a -> [a] -> Bool 
+hasWinner x = all (== x)
+
+coordsHaveWinner :: Board -> [Coord] -> Entry -> Bool
+coordsHaveWinner board coords entry = hasWinner (Just entry) $ getEntries board coords
+
+rowHasWinner :: Board -> Row -> Entry -> Bool
+rowHasWinner board row  = coordsHaveWinner board (getCoordsForRow board row)
+
+colHasWinner :: Board -> Column -> Entry -> Bool 
+colHasWinner board column = coordsHaveWinner board (getCoordsForCol board column)
 
 diagHasWinner :: Board -> Entry -> Bool
 diagHasWinner board entry =
-    let ltrCoords = [(0,0),(1,1),(2,2)]
-        rtlCoords = [(2,0),(1,1),(0,2)]
-        ltrDiagRow = getCells board ltrCoords
-        rtlDiagRow = getCells board rtlCoords
-        ltrHasWin = rowHasWinner ltrDiagRow entry
-        rtlHasWin = rowHasWinner rtlDiagRow entry
+    let ltrCoords = [(Row1, Col1),(Row2, Col2),(Row3, Col3)]
+        rtlCoords = [(Row3, Col1),(Row2, Col2),(Row1, Col3)]
+        ltrHasWin = coordsHaveWinner board ltrCoords entry
+        rtlHasWin = coordsHaveWinner board rtlCoords entry
     in  ltrHasWin || rtlHasWin
 
 
 boardHasWinner :: Board -> Entry -> Bool
 boardHasWinner board entry =
-  let rowWin = any (\row -> rowHasWinner row entry) board
-      transposedBoard = transpose board
-      columnWin = any (\row -> rowHasWinner row entry) transposedBoard
+  let rowWin = any (\row -> rowHasWinner board row entry) [Row1, Row2, Row3]
+      columnWin = any (\col -> colHasWinner board col entry) [Col1, Col2, Col3]
       diagWin = diagHasWinner board entry
   in rowWin || columnWin || diagWin
 
-isCellOpen :: Board -> Coord -> Bool
-isCellOpen board (x,y) = cellIsEmpty $ getCell board (x,y)
+boardIsFull :: Board -> Bool
+boardIsFull board = all (/= Nothing) $  M.elems board
 
-updateCell :: Entry -> Cell -> Cell
-updateCell newEntry (entry, coord) = if cellIsEmpty (entry, coord) then (newEntry, coord) else (entry, coord)
+createBlankBoard :: Board
+createBlankBoard = 
+    let flatList = concat ticTacToeBoardFormat
+        flatListWithNothing = map (\coord -> (coord, Nothing)) flatList
+        board = M.fromList flatListWithNothing
+    in board
 
-updateRow :: Row -> Cell -> Row
-updateRow cells newCell = map (\cell -> if (isSameCell newCell cell) && (cellIsEmpty cell) then newCell else cell) cells
-
-updateCellInBoard :: Board -> Cell -> Board
-updateCellInBoard board newCell = map (\row -> updateRow row newCell) board
+ticTacToeBoardFormat :: BoardFormat
+ticTacToeBoardFormat =      [[(Row1, Col1),(Row1, Col2),(Row1, Col3)]
+                            ,[(Row2, Col1),(Row2, Col2),(Row2, Col3)]
+                            ,[(Row3, Col1),(Row3, Col2),(Row3, Col3)]
+                            ]
