@@ -1,17 +1,13 @@
 module Lib
     ( getNextEntry
-    , getEntry
     , boardHasWinner
     , boardIsFull
-    , createBlankBoard
-    , ticTacToeBoardFormat
     , getStringFromEntry
     , getEntryFromString
     , getRowFromChar
     , getColFromChar
     , updateCell
     , Board
-    , BoardFormat
     , Row (..)
     , Column (..)
     , Cell
@@ -24,16 +20,13 @@ import Data.Maybe
 import qualified Data.Map as M
 
 data Entry = X | O deriving (Eq, Show)
-data Row = Row1 | Row2 | Row3 deriving (Eq, Ord, Show)
-data Column = Col1 | Col2 | Col3 deriving (Eq, Ord, Show)
+data Row = Row1 | Row2 | Row3 deriving (Eq, Ord, Show, Enum, Bounded)
+data Column = Col1 | Col2 | Col3 deriving (Eq, Ord, Show, Enum, Bounded)
+data IsWinner = IsWinner | IsNotWinner deriving (Eq, Show)
 
 type Coord = (Row, Column)
-type Cell = (Coord, Maybe Entry) -- is this needed?
-type Board = M.Map Coord (Maybe Entry)
-type BoardFormat = [[Coord]]
-
-getEntry :: Board -> Coord -> Maybe Entry
-getEntry board coord = M.findWithDefault Nothing coord board
+type Cell = (Coord, Maybe Entry)
+type Board = M.Map Coord Entry
 
 getStringFromEntry :: Maybe Entry -> String
 getStringFromEntry    Nothing    = "_"
@@ -58,9 +51,9 @@ getColFromChar  _   = Nothing
 
 updateCell :: Board -> Coord -> Entry -> (Bool, Board)
 updateCell board coord entry =
-    let existingEntry = getEntry board coord
+    let existingEntry = M.lookup coord board
         entryIsEmpty = isNothing existingEntry
-        newBoard = if entryIsEmpty then  M.adjust (const (Just entry)) coord board else board
+        newBoard = if entryIsEmpty then  M.adjust (const  entry) coord board else board
     in (entryIsEmpty, newBoard)
 
 getNextEntry :: Entry -> Entry
@@ -72,14 +65,14 @@ getCoordsForRow board row = M.keys $ M.filterWithKey (\(r, _) _ -> r == row) boa
 getCoordsForCol :: Board -> Column -> [Coord]
 getCoordsForCol board col = M.keys $ M.filterWithKey (\(_, c) _ -> c == col) board
 
-getEntries :: Board -> [Coord] -> [Maybe Entry]
+getEntries :: Board -> [Coord] -> [Entry]
 getEntries board coords = M.elems $ M.filterWithKey (\boardCoord _ -> boardCoord `elem` coords) board
 
 hasWinner :: Eq a => a -> [a] -> Bool 
-hasWinner x = all (== x)
+hasWinner  = all . (==) 
 
 coordsHaveWinner :: Board -> [Coord] -> Entry -> Bool
-coordsHaveWinner board coords entry = hasWinner (Just entry) $ getEntries board coords
+coordsHaveWinner board coords entry = hasWinner  entry $ getEntries board coords
 
 rowHasWinner :: Board -> Row -> Entry -> Bool
 rowHasWinner board row  = coordsHaveWinner board (getCoordsForRow board row)
@@ -104,17 +97,4 @@ boardHasWinner board entry =
   in rowWin || columnWin || diagWin
 
 boardIsFull :: Board -> Bool
-boardIsFull board = all (/= Nothing) $  M.elems board
-
-createBlankBoard :: Board
-createBlankBoard = 
-    let flatList = concat ticTacToeBoardFormat
-        flatListWithNothing = map (\coord -> (coord, Nothing)) flatList
-        board = M.fromList flatListWithNothing
-    in board
-
-ticTacToeBoardFormat :: BoardFormat
-ticTacToeBoardFormat =      [[(Row1, Col1),(Row1, Col2),(Row1, Col3)]
-                            ,[(Row2, Col1),(Row2, Col2),(Row2, Col3)]
-                            ,[(Row3, Col1),(Row3, Col2),(Row3, Col3)]
-                            ]
+boardIsFull  =  (== 9) . M.size

@@ -16,7 +16,7 @@ runGame = do
     clearScreen
     setSGR [SetColor Foreground Dull Yellow]
     putStrLn "\n~~Welcome to Tic Tac Toe!~~\n"
-    playTurn createBlankBoard X
+    playTurn mempty X
 
 getRowInput :: Board -> Entry -> IO (Char)
 getRowInput board entry = do

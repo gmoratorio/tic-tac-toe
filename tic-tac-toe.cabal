@@ -10,7 +10,7 @@ description:    Please see the README on GitHub at <https://github.com/gmoratori
 homepage:       https://github.com/gmoratorio/tic-tac-toe#readme
 bug-reports:    https://github.com/gmoratorio/tic-tac-toe/issues
 author:         Guillermo
-maintainer:     moratorio.guillermo@gmail.com
+maintainer:     Guillermo
 copyright:      2021 Guillermo
 license:        BSD3
 license-file:   LICENSE
@@ -35,6 +35,7 @@ library
       ansi-terminal
     , base >=4.7 && <5
     , containers
+    , split
   default-language: Haskell2010
 
 executable tic-tac-toe
@@ -48,6 +49,7 @@ executable tic-tac-toe
       ansi-terminal
     , base >=4.7 && <5
     , containers
+    , split
     , tic-tac-toe
   default-language: Haskell2010
 
@@ -64,5 +66,6 @@ test-suite tic-tac-toe-test
     , base >=4.7 && <5
     , containers
     , hspec
+    , split
     , tic-tac-toe
   default-language: Haskell2010
